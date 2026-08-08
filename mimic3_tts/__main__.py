@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Mimic3 TTS CLI — Hyper-Optimized Edition
+Mimic3 TTS CLI — for youtube
 Copyright (C) no one
 """
 
@@ -494,7 +494,12 @@ def main():
             voices = tts.get_voices()
             
         for v in voices:
-            print(v.name if hasattr(v, 'name') else v)
+            if hasattr(v, 'name'):
+                print(v.name)
+            elif isinstance(v, dict) and 'name' in v:
+                print(v['name'])
+            else:
+                print(v)
         sys.exit(0)
     
     if args.seed is not None:
