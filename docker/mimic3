@@ -56,9 +56,10 @@ if [[ -d /etc/ssl/certs ]]; then
     done < <(sort < "${cert_dirs_file}" | uniq)
 fi
 
-# PATCH 2: Added --init below to ensure Ctrl+C (SIGINT) propagates to Python threads
+# PATCH 2 & 3: Added --init for signal handling and --network host for local API access
 "${docker}" run \
     --init \
+    --network host \
     -i \
     -e "HOME=${HOME}" \
     -v "$HOME:${HOME}" \
