@@ -1,93 +1,105 @@
-# ⚠️ This project is no longer actively maintained
+# Mimic 3 — Hyper-Optimized & Asynchronous Edition
 
-Mycroft Mimic 3 is no longer maintained and may not work on your computer anymore. [Piper TTS](https://github.com/rhasspy/piper) is the spiritual successor to Mimic 3. 
+[![Fork Status](https://shields.io)](#-what-makes-this-fork-better)
+[![License: AGPL v3](https://shields.io)](LICENSE)
 
-# Mimic 3
+> [!NOTE]
+> This is an actively maintained, hyper-optimized fork of Mycroft Mimic 3. While the original upstream repository is no longer maintained by Mycroft AI, this fork rewrites the core execution architecture for high-performance automation, massive batch processing, and thread-safe pipeline execution.
 
-![mimic 3 mark 2](img/mimic3-hero.jpg)
+---
 
-A fast and local neural text to speech system developed by [Mycroft](https://mycroft.ai/) for the [Mark II](https://mycroft.ai/product/mark-ii/).
+##  What Makes This Fork Better?
 
-* [Available voices](https://github.com/MycroftAI/mimic3-voices)
-* [Documentation](https://mycroft-ai.gitbook.io/docs/mycroft-technologies/mimic-tts/coming-soon-mimic-3)
-* [How does it work?](https://mycroft-ai.gitbook.io/docs/mycroft-technologies/mimic-tts/coming-soon-mimic-3#how-it-works)
+The original Mimic 3 CLI processed text strictly line-by-line, causing significant latency and blocking bottlenecks. This fork introduces a production-ready asynchronous framework:
 
+*   **Ultra-Fast Asynchronous Engine:** Utilizes an `asyncio` pipeline paired with a `ThreadPoolExecutor` and concurrency-controlled semaphores to synthesize large batches of text simultaneously.
+*   **Smart I/O Performance:** Offloads heavy disk saving operations (`.wav` generation) to background worker threads, completely eliminating terminal and file-system write lag.
+*   **Fail-Safe Architecture:** Hardened with a bulletproof context manager lifecycle (`__aenter__` / `__aexit__`) to clean up background thread pools instantly on cancellation (`Ctrl+C`), preventing zombie processes.
+*   **Advanced Automation Features:** Added dynamic CSV data mappings (`id|voice|text`), multi-player interactive playback loops, and intelligent paragraph grouping via the `--process-on-blank-line` flag.
 
-## Quickstart
+---
 
-### Mycroft TTS Plugin
+## 🛠️ Quickstart
 
-``` sh
-# Install system packages
+### 1. Installation & Setup
+Install system speech dependencies and clone this fork to a virtual environment:
+
+```sh
+# Install core system voice libraries
 sudo apt-get install libespeak-ng1
 
-# Ensure that you're using the latest pip
-mycroft-pip install --upgrade pip
-
-# Install plugin
-mycroft-pip install mycroft-plugin-tts-mimic3[all]
-
-# Activate plugin
-mycroft-config set tts.module mimic3_tts_plug
-
-# Start mycroft
-mycroft-start all
-```
-
-See [documentation](https://mycroft-ai.gitbook.io/docs/mycroft-technologies/mimic-tts/coming-soon-mimic-3#tts-plugin-for-mycroft-ai) for more details.
-
-
-### Web Server
-
-``` sh
-mkdir -p "${HOME}/.local/share/mycroft/mimic3"
-chmod a+rwx "${HOME}/.local/share/mycroft/mimic3"
-docker run \
-       -it \
-       -p 59125:59125 \
-       -v "${HOME}/.local/share/mycroft/mimic3:/home/mimic3/.local/share/mycroft/mimic3" \
-       'mycroftai/mimic3'
-```
-
-Visit [http://localhost:59125](http://localhost:59125) or from another terminal:
-
-
-``` sh
-curl -X POST --data 'Hello world.' --output - localhost:59125/api/tts | aplay
-
-```
-
-See [documentation](https://mycroft-ai.gitbook.io/docs/mycroft-technologies/mimic-tts/coming-soon-mimic-3#web-server) for more details.
-
-
-### Command-Line Tool
-
-``` sh
-# Install system packages
-sudo apt-get install libespeak-ng1
-
-# Create virtual environment
+# Create and enter your virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
 pip3 install --upgrade pip
 
-pip3 install mycroft-mimic3-tts[all]
+# Install package dependencies (including new async requirements)
+pip3 install -e .
+pip3 install aiohttp tqdm
 ```
 
-Now you can run:
+### 2. High-Performance CLI Usage
 
-``` sh
-mimic3 'Hello world.' | aplay
+#### Bulk Batch Synthesis (Fastest)
+Pass large text documents or lines directly via standard input. Your engine automatically distributes workers concurrently across your processor cores:
+```sh
+cat long_story.txt | mimic3 --output-dir ./output_wavs --output-naming text
 ```
 
-Use `mimic3-server` and `mimic3 --remote ...` for repeated usage (much faster).
+#### Process Paragraph-by-Paragraph
+Assemble split line buffers seamlessly by telling the engine to execute breaks only on structural blank lines:
+```sh
+cat transcript.txt | mimic3 --process-on-blank-line --output-dir ./processed_audio
+```
 
-See [documentation](https://mycroft-ai.gitbook.io/docs/mycroft-technologies/mimic-tts/coming-soon-mimic-3#command-line-interface) for more details.
+#### Flexible Dynamic CSV Pipelines
+Feed structured datasets directly to map individual lines to unique voice modules and file IDs instantly:
+```sh
+# Format: id|voice|text
+cat database.csv | mimic3 --csv --csv-voice --output-naming id --output-dir ./export
+```
 
+#### List Available System Voices
+Quickly audit your underlying engine profiles without messy terminal dictionary dumps:
+```sh
+mimic3 --voices
+```
 
 ---
 
+##  Docker Deployment
 
-## License
+The companion container system has been completely hardened with automated initialization handlers and host-bridge access points.
 
-Mimic 3 is available under the [AGPL v3 license](LICENSE)
+```sh
+# Set up persistent cache volumes
+mkdir -p "\${HOME}/.local/share/mycroft/mimic3"
+chmod a+rwx "\${HOME}/.local/share/mycroft/mimic3"
+
+# Run the hyper-optimized container runner script
+./docker/mimic3 "Hello world from an optimized container." | aplay
+```
+
+> [!TIP]
+> The included `./docker/mimic3` script is pre-patched with `--init` to guarantee immediate thread termination on `Ctrl+C`, alongside `--network host` for frictionless remote API streaming.
+
+---
+
+##  Web Server & Remote Engine
+
+For repeated, extreme-throughput automation loops, pair your client with a localized server container instance:
+
+```sh
+# Spin up the background speech node
+docker run -d -p 59125:59125 v "\${HOME}/.local/share/mycroft/mimic3:/home/mimic3/.local/share/mycroft/mimic3" mycroftai/mimic3
+```
+
+Point your newly optimized asynchronous client directly at the network endpoint using the remote flag to leverage immediate network-level concurrency:
+```sh
+cat massive_text_dump.txt | mimic3 --remote http://localhost:59125 --output-dir ./streamed_audio
+```
+
+---
+
+##  License
+This program is distributed as free software under the terms of the **GNU Affero General Public License (AGPLv3)**. See the `LICENSE` file for deep copyleft compliance details.
