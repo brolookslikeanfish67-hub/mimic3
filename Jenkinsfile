@@ -58,7 +58,6 @@ pipeline {
                     credentialsId: 'devops-mycroft',
                     url: 'https://github.com/mycroftAI/mimic3.git'
 
-
                 // Mycroft TTS plugin
                 dir('plugin-tts-mimic3') {
                     git branch: 'master',
@@ -69,13 +68,13 @@ pipeline {
                 script {
                     // Get individual tags
                     env.MIMIC3_TAG_NAME = sh(
-                        returnStdout:  true,
+                        returnStdout: true,
                         script: "git tag --contains | head -n 1"
                     ).trim()
 
                     dir('plugin-tts-mimic3') {
                         env.PLUGIN_TAG_NAME = sh(
-                            returnStdout:  true,
+                            returnStdout: true,
                             script: "git tag --contains | head -n 1"
                         ).trim()
                     }
@@ -186,7 +185,7 @@ pipeline {
         stage('Publish docker') {
             environment {
                 MIMIC3_VERSION = readFile(file: 'mimic3_tts/VERSION').trim()
-                DOCKER_TAG = "mycroftai/mimic3:latest,mycroftai/mimic3:${env.MIMIC3_VERSION}"
+                DOCKER_TAG = "mycroftai/mimic3:latest,mycroftai/mimic3:${MIMIC3_VERSION}"
                 DOCKER_OUTPUT = '--push'
             }
 
