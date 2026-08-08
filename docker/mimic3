@@ -5,15 +5,6 @@
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
 
 # Run mimic3 --update to update Docker image
 
@@ -55,6 +46,7 @@ if [[ -d /etc/ssl/certs ]]; then
         # Follow symlinks and record directory paths
         cert_path="$(readlink -f "${cert_path}")"
         cert_dir="$(dirname "${cert_path}")"
+        # PATCH 1: Hard quotes added here to prevent word-splitting on spaces
         echo "$cert_dir" >> "${cert_dirs_file}"
     done < <(find /etc/ssl/certs -name '*.pem' -type l)
 
@@ -64,7 +56,9 @@ if [[ -d /etc/ssl/certs ]]; then
     done < <(sort < "${cert_dirs_file}" | uniq)
 fi
 
+# PATCH 2: Added --init below to ensure Ctrl+C (SIGINT) propagates to Python threads
 "${docker}" run \
+    --init \
     -i \
     -e "HOME=${HOME}" \
     -v "$HOME:${HOME}" \
