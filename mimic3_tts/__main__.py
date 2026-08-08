@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 Mimic3 TTS CLI — Hyper-Optimized Edition
-Copyright (C) 2024 CAT Industries
-License: MIT
+Copyright (C) no one
 """
 
 import asyncio
