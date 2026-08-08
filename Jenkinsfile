@@ -15,10 +15,7 @@
 //
 // -----------------------------------------------------------------------------
 //
-// Jenkins pipeline for building Mimic 3 artifacts.
-//
-// Requires Docker buildx: https://docs.docker.com/buildx/working-with-buildx/
-// Assumes the en_UK/apope_low voice is in /home/jenkins/.local/share/mycroft/mimic3/voices
+// Jenkins pipeline for building Mimic 3 artifacts (brolookslikeanfish67-hub fork).
 
 pipeline {
     agent any
@@ -35,12 +32,12 @@ pipeline {
 
         DOCKER_BUILDKIT = '1'
         DOCKER_PLATFORM = 'linux/amd64,linux/arm64,linux/arm/v7'
-        DOCKER_TAG = 'mycroftai/mimic3'
+        DOCKER_TAG = 'brolookslikeanfish67-hub/mimic3'
 
         DEFAULT_VOICE = 'en_UK/apope_low'
         DEFAULT_VOICE_PATH = '/home/jenkins/.local/share/mycroft/mimic3/voices'
 
-        GITHUB_OWNER = 'mycroftAI'
+        GITHUB_OWNER = 'brolookslikeanfish67-hub'
     }
 
     stages {
@@ -56,13 +53,13 @@ pipeline {
             steps {
                 git branch: 'master',
                     credentialsId: 'devops-mycroft',
-                    url: 'https://github.com/mycroftAI/mimic3.git'
+                    url: 'https://github.com/brolookslikeanfish67-hub/mimic3.git'
 
                 // Mycroft TTS plugin
                 dir('plugin-tts-mimic3') {
                     git branch: 'master',
                         credentialsId: 'devops-mycroft',
-                        url: 'https://github.com/mycroftAI/plugin-tts-mimic3'
+                        url: 'https://github.com/brolookslikeanfish67-hub/plugin-tts-mimic3.git'
                 }
 
                 script {
@@ -90,6 +87,13 @@ pipeline {
             steps {
                 sh 'mkdir -p voices/${DEFAULT_VOICE}'
                 sh 'rsync -r --link-dest="${DEFAULT_VOICE_PATH}/${DEFAULT_VOICE}/" "${DEFAULT_VOICE_PATH}/${DEFAULT_VOICE}/" voices/${DEFAULT_VOICE}/'
+            }
+        }
+
+        // Install async CLI dependencies before building packages
+        stage('Install Async Dependencies') {
+            steps {
+                sh 'pip install --upgrade aiohttp tqdm'
             }
         }
 
@@ -185,7 +189,7 @@ pipeline {
         stage('Publish docker') {
             environment {
                 MIMIC3_VERSION = readFile(file: 'mimic3_tts/VERSION').trim()
-                DOCKER_TAG = "mycroftai/mimic3:latest,mycroftai/mimic3:${MIMIC3_VERSION}"
+                DOCKER_TAG = "brolookslikeanfish67-hub/mimic3:latest,brolookslikeanfish67-hub/mimic3:${MIMIC3_VERSION}"
                 DOCKER_OUTPUT = '--push'
             }
 
