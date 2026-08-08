@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Mimic3 TTS CLI 
-Copyright idk and anyone can use this (because sharing is caring, and I'm generous)
+Mimic3 TTS CLI — Hyper-Optimized Edition
+Copyright (C) 2024 CAT Industries
+License: MIT
 """
 
 import asyncio
@@ -13,6 +14,8 @@ import os
 import shlex
 import shutil
 import signal
+import string
+import subprocess
 import sys
 import tempfile
 import time
@@ -108,7 +111,7 @@ class OptimizedTTS:
         
         self._local_tts = None
         self._session = None
-        self._executor = ThreadPoolExecutor(max_workers=8)
+        self._executor = None  # Initialized in __aenter__ to prevent leaks
         
         if not remote_url:
             # Initialize local TTS
@@ -127,16 +130,19 @@ class OptimizedTTS:
                 self._local_tts.speaker = speaker
     
     async def __aenter__(self):
+        self._executor = ThreadPoolExecutor(max_workers=8)
         if self.remote_url:
             self._session = aiohttp.ClientSession()
         return self
     
-    async def __aexit__(self, *args):
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self._session:
             await self._session.close()
         if self._local_tts:
             self._local_tts.shutdown()
-        self._executor.shutdown(wait=True)
+        if self._executor:
+            # wait=False ensures we don't hang indefinitely if a thread crashed
+            self._executor.shutdown(wait=False)
     
     async def synthesize_batch(self, jobs: List[SynthesisJob]) -> AsyncIterator[SynthesisResult]:
         """Synthesize multiple jobs with concurrent execution"""
@@ -268,7 +274,7 @@ class OptimizedTTS:
 # Audio Output Utilities
 # -----------------------------------------------------------------------------
 
-async def play_audio(result: SynthesisResult, play_programs: List[str] = DEFAULT_PLAY_PROGRAMS):
+async def play_audio(result: SynthesisResult, play_programs: List[str]):
     """Play audio bytes using system audio player"""
     with tempfile.NamedTemporaryFile(mode="wb+", suffix=".wav") as wav_file:
         # Write WAV header + PCM data
@@ -405,7 +411,8 @@ async def main_async(args: argparse.Namespace):
             
             # Interactive playback
             if args.interactive:
-                await play_audio(result, args.play_program)
+                play_programs = args.play_program or DEFAULT_PLAY_PROGRAMS
+                await play_audio(result, play_programs)
             
             # Write to output directory
             if args.output_dir:
@@ -455,7 +462,7 @@ def main():
     parser.add_argument("--csv-voice", action="store_true", help="CSV: id|voice|text")
     parser.add_argument("--mark-file", help="File to write SSML mark names")
     parser.add_argument("--interactive", action="store_true", help="Play audio immediately")
-    parser.add_argument("--play-program", action="append", default=DEFAULT_PLAY_PROGRAMS)
+    parser.add_argument("--play-program", action="append", default=None)
     parser.add_argument("--noise-scale", type=float, help="Noise scale [0-1]")
     parser.add_argument("--length-scale", type=float, help="Length scale (1.0 = normal)")
     parser.add_argument("--noise-w", type=float, help="Cadence variation [0-1]")
@@ -474,6 +481,21 @@ def main():
     if args.version:
         from mimic3_tts import __version__
         print(__version__)
+        sys.exit(0)
+        
+    if args.voices:
+        # Load settings and list voices, then exit
+        settings = Mimic3Settings(
+            voices_directories=[str(d) for d in (args.voices_dir or [])],
+            use_cuda=args.cuda
+        )
+        tts = Mimic3TextToSpeechSystem(settings)
+        voices = getattr(tts, 'voices', [])
+        if not voices and hasattr(tts, 'get_voices'):
+            voices = tts.get_voices()
+            
+        for v in voices:
+            print(v.name if hasattr(v, 'name') else v)
         sys.exit(0)
     
     if args.seed is not None:
