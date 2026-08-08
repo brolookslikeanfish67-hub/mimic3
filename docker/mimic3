@@ -55,7 +55,7 @@ if [[ -d /etc/ssl/certs ]]; then
         # Follow symlinks and record directory paths
         cert_path="$(readlink -f "${cert_path}")"
         cert_dir="$(dirname "${cert_path}")"
-        echo $cert_dir >> "${cert_dirs_file}"
+        echo "$cert_dir" >> "${cert_dirs_file}"
     done < <(find /etc/ssl/certs -name '*.pem' -type l)
 
     # Map unique certificate directories
@@ -65,14 +65,14 @@ if [[ -d /etc/ssl/certs ]]; then
 fi
 
 "${docker}" run \
-            -i \
-            -e "HOME=${HOME}" \
-            -v "$HOME:${HOME}" \
-            -w "${PWD}" \
-            --device /dev/snd:/dev/snd \
-            --user "$(id -u):$(id -g)" "${docker_run_args[@]}" \
-            --entrypoint '/home/mimic3/app/.venv/bin/python3' \
-            "${repo}:${tag}" \
-            -m mimic3_tts \
-            --stdout \
-            "${args[@]}"
+    -i \
+    -e "HOME=${HOME}" \
+    -v "$HOME:${HOME}" \
+    -w "${PWD}" \
+    --device /dev/snd:/dev/snd \
+    --user "$(id -u):$(id -g)" "${docker_run_args[@]}" \
+    --entrypoint '/home/mimic3/app/.venv/bin/python3' \
+    "${repo}:${tag}" \
+    -m mimic3_tts \
+    --stdout \
+    "${args[@]}"
